@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>תקציב פרויקטים קהילתי</title>
+  <!-- SortableJS - drag & drop that works on mouse AND touch -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, "Noto Sans Hebrew", sans-serif;
+      background: #f3f4f6;
+      color: #1f2937;
+      min-height: 100vh;
+      direction: rtl;
+    }
+
+    header {
+      background: #1e3a8a;
+      color: white;
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .admin-btn {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .admin-btn:hover { background: rgba(255,255,255,0.25); }
+
+    .board {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 12px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      min-height: 70vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel h2 {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+      font-weight: 600;
+      text-align: center;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    /* LEFT panel = the bank / total */
+    .bank-panel {
+      background: #dcfce7;
+      border: 3px solid #16a34a;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .bank-panel.over-budget {
+      background: #fee2e2;
+      border-color: #dc2626;
+    }
+
+    .total-display {
+      text-align: center;
+      padding: 10px;
+      background: rgba(255,255,255,0.6);
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .total-display .label {
+      font-size: 13px;
+      color: #374151;
+    }
+    .total-display .amount {
+      font-size: 24px;
+      font-weight: 700;
+      color: #166534;
+    }
+    .bank-panel.over-budget .total-display .amount { color: #991b1b; }
+    .total-display .budget-line {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .list {
+      flex: 1;
+      min-height: 120px;
+      padding: 4px;
+    }
+
+    .item {
+      background: white;
+      border: 2px solid #d1d5db;
+      border-right: 6px solid var(--item-color, #6b7280);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      cursor: grab;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      touch-action: none; /* important for mobile drag */
+      user-select: none;
+      font-size: 14px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    }
+    .item:active { cursor: grabbing; }
+    .item .name { flex: 1; font-weight: 500; }
+    .item .price {
+      background: var(--item-color, #6b7280);
+      color: white;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .sortable-ghost {
+      opacity: 0.4;
+      background: #fef3c7 !important;
+    }
+    .sortable-chosen {
+      transform: scale(1.02);
+    }
+    .sortable-drag {
+      box-shadow: 0 6px 16px rgba(0,0,0,0.2) !important;
+    }
+
+    .empty-hint {
+      text-align: center;
+      color: #9ca3af;
+      font-size: 13px;
+      padding: 20px 10px;
+      font-style: italic;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 14px;
+    }
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      background: white;
+      border-radius: 12px;
+      padding: 18px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .modal h3 {
+      margin-top: 0;
+      text-align: center;
+      color: #1e3a8a;
+    }
+
+    .modal label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin: 10px 0 4px;
+      color: #374151;
+    }
+    .modal input[type="text"],
+    .modal input[type="number"],
+    .modal input[type="password"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 15px;
+      font-family: inherit;
+      direction: rtl;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-start;
+      margin-top: 14px;
+    }
+    .btn {
+      padding: 9px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .btn-primary { background: #1e3a8a; color: white; }
+    .btn-secondary { background: #e5e7eb; color: #1f2937; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-success { background: #16a34a; color: white; }
+
+    .project-edit-row {
+      display: grid;
+      grid-template-columns: 1fr 110px 50px 40px;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .project-edit-row input[type="text"],
+    .project-edit-row input[type="number"] {
+      padding: 6px 8px;
+      font-size: 13px;
+    }
+    .project-edit-row input[type="color"] {
+      width: 100%;
+      height: 34px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 2px;
+      cursor: pointer;
+    }
+    .del-row-btn {
+      background: #fee2e2;
+      color: #991b1b;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: 700;
+      height: 34px;
+    }
+    .add-row-btn {
+      margin-top: 6px;
+      width: 100%;
+      padding: 8px;
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px dashed #1e40af;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .error-msg {
+      color: #dc2626;
+      font-size: 13px;
+      margin-top: 6px;
+      text-align: center;
+    }
+
+    /* Mobile tweaks */
+    @media (max-width: 640px) {
+      header h1 { font-size: 15px; }
+      .admin-btn { padding: 5px 10px; font-size: 12px; }
+      .board { padding: 8px; gap: 8px; }
+      .panel { padding: 8px; min-height: 78vh; }
+      .panel h2 { font-size: 14px; }
+      .total-display .amount { font-size: 20px; }
+      .item { font-size: 13px; padding: 8px 10px; }
+      .item .price { font-size: 12px; padding: 2px 7px; }
+      .project-edit-row {
+        grid-template-columns: 1fr 90px 45px 36px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>תקציב פרויקטים קהילתי</h1>
+  <button class="admin-btn" id="adminBtn">מנהל</button>
+</header>
+
+<div class="board">
+  <!-- RIGHT panel: available projects -->
+  <div class="panel" id="rightPanel">
+    <h2>פרויקטים זמינים</h2>
+    <div class="list" id="availableList"></div>
+  </div>
+
+  <!-- LEFT panel: the bank / chosen -->
+  <div class="panel bank-panel" id="leftPanel">
+    <h2>הבחירה שלי</h2>
+    <div class="total-display">
+      <div class="label">סך הכל נבחר</div>
+      <div class="amount" id="totalAmount">0 ₪</div>
+      <div class="budget-line">תקציב מרבי: <span id="budgetLine">0</span> ₪</div>
+    </div>
+    <div class="list" id="chosenList"></div>
+  </div>
+</div>
+
+<!-- Admin login modal -->
+<div class="modal-backdrop" id="loginModal">
+  <div class="modal">
+    <h3>כניסת מנהל</h3>
+    <label for="adminPassword">סיסמה</label>
+    <input type="password" id="adminPassword" autocomplete="off" />
+    <div class="error-msg" id="loginError" style="display:none;">סיסמה שגויה</div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="loginSubmit">כניסה</button>
+      <button class="btn btn-secondary" id="loginCancel">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin edit modal -->
+<div class="modal-backdrop" id="adminModal">
+  <div class="modal">
+    <h3>עריכת הגדרות</h3>
+
+    <label for="budgetInput">תקציב מרבי (₪)</label>
+    <input type="number" id="budgetInput" min="0" step="1000" />
+
+    <label style="margin-top: 14px;">רשימת פרויקטים</label>
+    <div id="projectsEditor"></div>
+    <button class="add-row-btn" id="addProjectBtn">+ הוסף פרויקט</button>
+
+    <div class="modal-actions">
+      <button class="btn btn-success" id="saveAdmin">שמור</button>
+      <button class="btn btn-secondary" id="cancelAdmin">ביטול</button>
+      <button class="btn btn-danger" id="resetAdmin" title="החזר את רשימת הפרויקטים והתקציב לברירת המחדל">איפוס לברירת מחדל</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Default data - used on first load and on "reset to default"
+// ============================================================
+const DEFAULT_BUDGET = 200000;
+const DEFAULT_PROJECTS = [
+  { id: 'p1',  name: 'עץ בכיכר',            price: 2000,  color: '#16a34a' },
+  { id: 'p2',  name: 'מחסן תרבות',          price: 3000,  color: '#0ea5e9' },
+  { id: 'p3',  name: 'שיפור דשא',           price: 4000,  color: '#65a30d' },
+  { id: 'p4',  name: 'שיפוץ מועדון',        price: 4000,  color: '#9333ea' },
+  { id: 'p5',  name: 'צביעת הכביש',         price: 8000,  color: '#f59e0b' },
+  { id: 'p6',  name: 'תרבות אבזור',         price: 8000,  color: '#ec4899' },
+  { id: 'p7',  name: 'סאונד - רמקולים',     price: 10000, color: '#8b5cf6' },
+  { id: 'p8',  name: 'מכונת פופקורן',       price: 10000, color: '#ef4444' },
+  { id: 'p9',  name: 'שילוט רחובות',        price: 21000, color: '#14b8a6' },
+  { id: 'p10', name: 'שיפוץ פעוטון',        price: 40000, color: '#f97316' },
+  { id: 'p11', name: 'גינה קהילתית',        price: 41000, color: '#84cc16' },
+  { id: 'p12', name: 'מקלט לגן',            price: 25000, color: '#06b6d4' },
+  { id: 'p13', name: 'פיגום',               price: 15000, color: '#a855f7' },
+  { id: 'p14', name: 'מצלמות',              price: 17000, color: '#db2777' },
+  { id: 'p15', name: 'חניה במרכז',          price: 24000, color: '#0891b2' },
+];
+
+const ADMIN_PASSWORD = '123456789';
+const STORAGE_KEY   = 'budgetApp.v1';
+
+// ============================================================
+// State
+// ============================================================
+let state = loadState();
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        budget: typeof parsed.budget === 'number' ? parsed.budget : DEFAULT_BUDGET,
+        projects: Array.isArray(parsed.projects) && parsed.projects.length
+          ? parsed.projects
+          : DEFAULT_PROJECTS.slice(),
+        chosenIds: Array.isArray(parsed.chosenIds) ? parsed.chosenIds : [],
+      };
+    }
+  } catch (e) { /* fall through */ }
+  return {
+    budget: DEFAULT_BUDGET,
+    projects: DEFAULT_PROJECTS.slice(),
+    chosenIds: [],
+  };
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.warn('Could not save state', e);
+  }
+}
+
+// ============================================================
+// Rendering
+// ============================================================
+const availableListEl = document.getElementById('availableList');
+const chosenListEl    = document.getElementById('chosenList');
+const totalAmountEl   = document.getElementById('totalAmount');
+const budgetLineEl    = document.getElementById('budgetLine');
+const leftPanelEl     = document.getElementById('leftPanel');
+
+function fmt(n) {
+  return Number(n).toLocaleString('he-IL');
+}
+
+function projectById(id) {
+  return state.projects.find(p => p.id === id);
+}
+
+function renderLists() {
+  // Clean chosenIds: drop any ids that no longer exist (project deleted)
+  state.chosenIds = state.chosenIds.filter(id => projectById(id));
+
+  availableListEl.innerHTML = '';
+  chosenListEl.innerHTML = '';
+
+  const chosenSet = new Set(state.chosenIds);
+
+  // Available = projects not yet chosen
+  const available = state.projects.filter(p => !chosenSet.has(p.id));
+  if (!available.length) {
+    availableListEl.innerHTML = '<div class="empty-hint">אין עוד פרויקטים להוסיף</div>';
+  } else {
+    available.forEach(p => availableListEl.appendChild(buildItemEl(p)));
+  }
+
+  // Chosen - keep the order the user placed them
+  if (!state.chosenIds.length) {
+    chosenListEl.innerHTML = '<div class="empty-hint">גרור לכאן פרויקטים כדי לבחור אותם</div>';
+  } else {
+    state.chosenIds.forEach(id => {
+      const p = projectById(id);
+      if (p) chosenListEl.appendChild(buildItemEl(p));
+    });
+  }
+
+  renderTotal();
+}
+
+function buildItemEl(project) {
+  const div = document.createElement('div');
+  div.className = 'item';
+  div.dataset.id = project.id;
+  div.style.setProperty('--item-color', project.color);
+  div.innerHTML = `
+    <span class="name"></span>
+    <span class="price"></span>
+  `;
+  div.querySelector('.name').textContent = project.name;
+  div.querySelector('.price').textContent = fmt(project.price) + ' ₪';
+  return div;
+}
+
+function renderTotal() {
+  const total = state.chosenIds.reduce((sum, id) => {
+    const p = projectById(id);
+    return sum + (p ? Number(p.price) : 0);
+  }, 0);
+  totalAmountEl.textContent = fmt(total) + ' ₪';
+  budgetLineEl.textContent  = fmt(state.budget);
+
+  if (total > state.budget) {
+    leftPanelEl.classList.add('over-budget');
+  } else {
+    leftPanelEl.classList.remove('over-budget');
+  }
+}
+
+// ============================================================
+// Drag & drop setup (SortableJS, shared group between 2 lists)
+// ============================================================
+function collectIds(listEl) {
+  return Array.from(listEl.querySelectorAll('.item')).map(el => el.dataset.id);
+}
+
+function onDropChange() {
+  // Read order from DOM - this is what the user just dragged
+  state.chosenIds = collectIds(chosenListEl);
+  saveState();
+  renderTotal();
+  // If a list is now empty we re-render to show the hint
+  if (!availableListEl.querySelector('.item') || !chosenListEl.querySelector('.item')) {
+    renderLists();
+  }
+}
+
+function initSortables() {
+  new Sortable(availableListEl, {
+    group: 'projects',
+    animation: 150,
+    ghostClass: 'sortable-ghost',
+    chosenClass: 'sortable-chosen',
+    dragClass: 'sortable-drag',
+    onAdd: onDropChange,
+    onUpdate: onDropChange,
+  });
+  new Sortable(chosenListEl, {
+    group: 'projects',
+    animation: 150,
+    ghostClass: 'sortable-ghost',
+    chosenClass: 'sortable-chosen',
+    dragClass: 'sortable-drag',
+    onAdd: onDropChange,
+    onUpdate: onDropChange,
+  });
+}
+
+// ============================================================
+// Admin flow
+// ============================================================
+const adminBtn       = document.getElementById('adminBtn');
+const loginModal     = document.getElementById('loginModal');
+const adminModal     = document.getElementById('adminModal');
+const adminPassword  = document.getElementById('adminPassword');
+const loginError     = document.getElementById('loginError');
+const loginSubmit    = document.getElementById('loginSubmit');
+const loginCancel    = document.getElementById('loginCancel');
+const budgetInput    = document.getElementById('budgetInput');
+const projectsEditor = document.getElementById('projectsEditor');
+const addProjectBtn  = document.getElementById('addProjectBtn');
+const saveAdminBtn   = document.getElementById('saveAdmin');
+const cancelAdminBtn = document.getElementById('cancelAdmin');
+const resetAdminBtn  = document.getElementById('resetAdmin');
+
+adminBtn.addEventListener('click', () => {
+  adminPassword.value = '';
+  loginError.style.display = 'none';
+  loginModal.classList.add('open');
+  setTimeout(() => adminPassword.focus(), 50);
+});
+
+loginCancel.addEventListener('click', () => loginModal.classList.remove('open'));
+
+loginSubmit.addEventListener('click', tryLogin);
+adminPassword.addEventListener('keydown', e => {
+  if (e.key === 'Enter') tryLogin();
+});
+
+function tryLogin() {
+  if (adminPassword.value === ADMIN_PASSWORD) {
+    loginModal.classList.remove('open');
+    openAdminEditor();
+  } else {
+    loginError.style.display = 'block';
+  }
+}
+
+function openAdminEditor() {
+  budgetInput.value = state.budget;
+  projectsEditor.innerHTML = '';
+  state.projects.forEach(p => projectsEditor.appendChild(buildEditRow(p)));
+  adminModal.classList.add('open');
+}
+
+function buildEditRow(project) {
+  const row = document.createElement('div');
+  row.className = 'project-edit-row';
+  row.dataset.id = project.id;
+  row.innerHTML = `
+    <input type="text" class="edit-name" placeholder="שם הפרויקט" />
+    <input type="number" class="edit-price" min="0" step="100" placeholder="מחיר" />
+    <input type="color" class="edit-color" />
+    <button type="button" class="del-row-btn" title="מחק">×</button>
+  `;
+  row.querySelector('.edit-name').value  = project.name;
+  row.querySelector('.edit-price').value = project.price;
+  row.querySelector('.edit-color').value = project.color || '#6b7280';
+  row.querySelector('.del-row-btn').addEventListener('click', () => row.remove());
+  return row;
+}
+
+addProjectBtn.addEventListener('click', () => {
+  const palette = ['#16a34a','#0ea5e9','#9333ea','#f59e0b','#ec4899','#8b5cf6','#ef4444','#14b8a6','#f97316','#84cc16','#06b6d4','#a855f7','#db2777','#0891b2'];
+  const colorGuess = palette[projectsEditor.children.length % palette.length];
+  const newP = { id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), name: '', price: 0, color: colorGuess };
+  projectsEditor.appendChild(buildEditRow(newP));
+});
+
+cancelAdminBtn.addEventListener('click', () => adminModal.classList.remove('open'));
+
+saveAdminBtn.addEventListener('click', () => {
+  const newBudget = Number(budgetInput.value);
+  if (!Number.isFinite(newBudget) || newBudget < 0) {
+    alert('תקציב לא תקין');
+    return;
+  }
+  const rows = Array.from(projectsEditor.querySelectorAll('.project-edit-row'));
+  const newProjects = [];
+  for (const row of rows) {
+    const name  = row.querySelector('.edit-name').value.trim();
+    const price = Number(row.querySelector('.edit-price').value);
+    const color = row.querySelector('.edit-color').value;
+    if (!name)                           { alert('שם פרויקט ריק - נא למלא או למחוק את השורה'); return; }
+    if (!Number.isFinite(price) || price < 0) { alert('מחיר לא תקין עבור: ' + name); return; }
+    newProjects.push({ id: row.dataset.id, name, price, color });
+  }
+  state.budget   = newBudget;
+  state.projects = newProjects;
+  saveState();
+  renderLists();
+  adminModal.classList.remove('open');
+});
+
+resetAdminBtn.addEventListener('click', () => {
+  if (!confirm('לאפס את התקציב ואת רשימת הפרויקטים לברירת המחדל? הבחירה הנוכחית תישמר עד כמה שאפשר.')) return;
+  state.budget   = DEFAULT_BUDGET;
+  state.projects = DEFAULT_PROJECTS.slice();
+  saveState();
+  openAdminEditor();   // refresh the open editor
+  renderLists();
+});
+
+// Close any modal on backdrop click
+[loginModal, adminModal].forEach(m => {
+  m.addEventListener('click', e => {
+    if (e.target === m) m.classList.remove('open');
+  });
+});
+
+// ============================================================
+// Go
+// ============================================================
+renderLists();
+initSortables();
+</script>
+
+</body>
+</html>
