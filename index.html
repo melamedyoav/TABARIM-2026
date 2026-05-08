@@ -5,14 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>תקציב פרויקטים קהילתי</title>
 
-  <!--
-    =================================================================
-    עריכה של הפרויקטים והתקציב:
-    לגלול למטה לבלוק שמתחיל ב-"BUDGET & PROJECTS - EDIT HERE".
-    זה הבלוק היחיד שצריך לגעת בו.
-    =================================================================
-  -->
-
   <!-- SortableJS - drag & drop that works on mouse AND touch -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <style>
@@ -47,7 +39,7 @@
 
     .board {
       flex: 1 1 auto;
-      min-height: 0;             /* required for nested flex/scroll */
+      min-height: 0;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
@@ -78,7 +70,6 @@
       border-bottom: 2px solid #e5e7eb;
     }
 
-    /* LEFT panel = the bank / total */
     .bank-panel {
       background: #dcfce7;
       border: 3px solid #16a34a;
@@ -98,11 +89,7 @@
       margin-bottom: 10px;
     }
     .total-display .label { font-size: 13px; color: #374151; }
-    .total-display .amount {
-      font-size: 24px;
-      font-weight: 700;
-      color: #166534;
-    }
+    .total-display .amount { font-size: 24px; font-weight: 700; color: #166534; }
     .bank-panel.over-budget .total-display .amount { color: #991b1b; }
     .total-display .budget-line { font-size: 12px; color: #6b7280; margin-top: 4px; }
 
@@ -118,7 +105,6 @@
     }
     .reset-btn:hover { background: #f3f4f6; }
 
-    /* The scrollable list inside each panel */
     .list {
       flex: 1 1 auto;
       min-height: 0;
@@ -127,7 +113,6 @@
       padding: 4px 6px 4px 4px;
       -webkit-overflow-scrolling: touch;
     }
-    /* Custom scrollbar (Webkit) */
     .list::-webkit-scrollbar { width: 6px; }
     .list::-webkit-scrollbar-track { background: transparent; }
     .list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
@@ -191,7 +176,6 @@
       font-style: italic;
     }
 
-    /* Mobile tweaks */
     @media (max-width: 640px) {
       header { padding: 10px 14px; }
       header h1 { font-size: 15px; }
@@ -200,10 +184,6 @@
       .panel h2 { font-size: 14px; margin-bottom: 8px; padding-bottom: 6px; }
       .total-display { padding: 8px; margin-bottom: 8px; }
       .total-display .amount { font-size: 20px; }
-
-      /* On mobile, stack inside the card so the name gets the full row width.
-         Top row: [number]  ........  [price]
-         Bottom row: [name spans full width]                                */
       .item {
         display: grid;
         grid-template-columns: auto 1fr auto;
@@ -234,13 +214,11 @@
 </header>
 
 <div class="board">
-  <!-- RIGHT panel: available projects -->
   <div class="panel" id="rightPanel">
     <h2>פרויקטים זמינים</h2>
     <div class="list" id="availableList"></div>
   </div>
 
-  <!-- LEFT panel: the bank / chosen -->
   <div class="panel bank-panel" id="leftPanel">
     <h2>הבחירה שלי</h2>
     <div class="total-display">
@@ -257,21 +235,7 @@
 // =============================================================
 // BUDGET & PROJECTS - EDIT HERE
 // =============================================================
-// To change the budget, the project list, or the colors, edit the
-// two constants below and commit the file back to GitHub. That's it.
-//
-// Each project object has 4 fields:
-//   id    - any unique string. Keep it stable so users who already
-//           picked this project don't lose their selection.
-//   name  - the Hebrew label shown on the card.
-//   price - the amount in ILS (integer).
-//   color - any CSS color; "#RRGGBB" is the simplest form.
-//
-// The number shown on each card (01, 02, ...) is generated
-// automatically from the order in this array - no need to set it.
-// -------------------------------------------------------------
-
-const BUDGET = 200000;   // התקציב המרבי ב-₪
+const BUDGET = 200000;
 
 const PROJECTS = [
   { id: 'p01', name: 'חיפוי מחסן תרבות',                                price: 3000,  color: '#16a34a' },
@@ -296,54 +260,50 @@ const PROJECTS = [
   { id: 'p20', name: 'הסדרת עמדות המחזור ברחבי היישוב',                 price: 49400, color: '#b91c1c' },
   { id: 'p21', name: 'וילונות חדשים למועדון',                            price: 50000, color: '#1d4ed8' },
 ];
-
 // =============================================================
-// END of edit zone - no need to touch anything below this line
+// END of edit zone
 // =============================================================
 
 const STORAGE_KEY = 'budgetApp.choices.v3';
 
-// Auto-generated lookup: project number ('01', '02', ...) by id
-const NUM_BY_ID = (() => {
-  const m = {};
-  PROJECTS.forEach((p, i) => { m[p.id] = String(i + 1).padStart(2, '0'); });
+const NUM_BY_ID = (function () {
+  var m = {};
+  PROJECTS.forEach(function (p, i) { m[p.id] = String(i + 1).padStart(2, '0'); });
   return m;
 })();
 
-// -----------------------------
-// User's PRIVATE choices (per-browser)
-// -----------------------------
 function loadChosenIds() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    var raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const arr = JSON.parse(raw);
+      var arr = JSON.parse(raw);
       if (Array.isArray(arr)) return arr;
     }
-  } catch (e) { /* ignore */ }
+  } catch (e) {}
   return [];
 }
 function saveChosenIds(ids) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(ids)); }
-  catch (e) { console.warn('Could not save choices', e); }
+  catch (e) { console.warn('Could not save', e); }
 }
 
-let chosenIds = loadChosenIds().filter(id => PROJECTS.some(p => p.id === id));
+var chosenIds = loadChosenIds().filter(function (id) {
+  return PROJECTS.some(function (p) { return p.id === id; });
+});
 
-// -----------------------------
-// Rendering
-// -----------------------------
-const availableListEl = document.getElementById('availableList');
-const chosenListEl    = document.getElementById('chosenList');
-const totalAmountEl   = document.getElementById('totalAmount');
-const budgetLineEl    = document.getElementById('budgetLine');
-const leftPanelEl     = document.getElementById('leftPanel');
+var availableListEl = document.getElementById('availableList');
+var chosenListEl    = document.getElementById('chosenList');
+var totalAmountEl   = document.getElementById('totalAmount');
+var budgetLineEl    = document.getElementById('budgetLine');
+var leftPanelEl     = document.getElementById('leftPanel');
 
 function fmt(n) { return Number(n).toLocaleString('he-IL'); }
-function projectById(id) { return PROJECTS.find(p => p.id === id); }
+function projectById(id) {
+  return PROJECTS.find(function (p) { return p.id === id; });
+}
 
 function buildItemEl(project) {
-  const div = document.createElement('div');
+  var div = document.createElement('div');
   div.className = 'item';
   div.dataset.id = project.id;
   div.style.setProperty('--item-color', project.color);
@@ -355,27 +315,24 @@ function buildItemEl(project) {
 }
 
 function renderLists() {
-  chosenIds = chosenIds.filter(id => projectById(id));
+  chosenIds = chosenIds.filter(function (id) { return projectById(id); });
 
   availableListEl.innerHTML = '';
   chosenListEl.innerHTML    = '';
-  const chosenSet = new Set(chosenIds);
+  var chosenSet = new Set(chosenIds);
 
-  // Available list always shows projects in CANONICAL order (the order
-  // they appear in the PROJECTS array). User can't reorder it.
-  const available = PROJECTS.filter(p => !chosenSet.has(p.id));
+  var available = PROJECTS.filter(function (p) { return !chosenSet.has(p.id); });
   if (!available.length) {
     availableListEl.innerHTML = '<div class="empty-hint">אין עוד פרויקטים להוסיף</div>';
   } else {
-    available.forEach(p => availableListEl.appendChild(buildItemEl(p)));
+    available.forEach(function (p) { availableListEl.appendChild(buildItemEl(p)); });
   }
 
-  // Chosen list keeps the order the user placed them in.
   if (!chosenIds.length) {
     chosenListEl.innerHTML = '<div class="empty-hint">גרור לכאן פרויקטים כדי לבחור אותם</div>';
   } else {
-    chosenIds.forEach(id => {
-      const p = projectById(id);
+    chosenIds.forEach(function (id) {
+      var p = projectById(id);
       if (p) chosenListEl.appendChild(buildItemEl(p));
     });
   }
@@ -384,8 +341,8 @@ function renderLists() {
 }
 
 function renderTotal() {
-  const total = chosenIds.reduce((sum, id) => {
-    const p = projectById(id);
+  var total = chosenIds.reduce(function (sum, id) {
+    var p = projectById(id);
     return sum + (p ? Number(p.price) : 0);
   }, 0);
   totalAmountEl.textContent = fmt(total) + ' ₪';
@@ -395,40 +352,57 @@ function renderTotal() {
   else                leftPanelEl.classList.remove('over-budget');
 }
 
-// -----------------------------
-// Drag & drop (mouse + touch, via SortableJS)
-// -----------------------------
 function collectIds(listEl) {
-  return Array.from(listEl.querySelectorAll('.item')).map(el => el.dataset.id);
+  return Array.prototype.slice.call(listEl.querySelectorAll('.item')).map(function (el) {
+    return el.dataset.id;
+  });
 }
 
 function onChosenChange() {
-  // Always read the latest chosen order from the DOM.
   chosenIds = collectIds(chosenListEl);
   saveChosenIds(chosenIds);
-  // Re-render to keep the available list in canonical order
-  // and to refresh the empty-state hints.
   renderLists();
 }
 
 function initSortables() {
-  const sharedOpts = {
+  if (typeof Sortable === 'undefined') {
+    console.warn('SortableJS not loaded - drag will be unavailable');
+    return;
+  }
+  var sharedOpts = {
     group: 'projects',
     animation: 150,
     ghostClass: 'sortable-ghost',
     chosenClass: 'sortable-chosen',
     dragClass: 'sortable-drag',
-    // Mobile: hold ~180ms to start dragging — quick swipes scroll the list.
     delay: 180,
     delayOnTouchOnly: true,
-    touchStartThreshold: 5,
+    touchStartThreshold: 5
   };
 
-  // Available list: cannot be reordered by the user (sort: false),
-  // but items can still be dragged out of it into the chosen list.
   new Sortable(availableListEl, Object.assign({}, sharedOpts, {
     sort: false,
-    onAdd: onChosenChange,     // user dragged an item back to available
+    onAdd: onChosenChange
   }));
 
-  // Chosen list: user can reorder freely, and drag items in/out.
+  new Sortable(chosenListEl, Object.assign({}, sharedOpts, {
+    onAdd: onChosenChange,
+    onUpdate: onChosenChange,
+    onRemove: onChosenChange
+  }));
+}
+
+document.getElementById('resetChoicesBtn').addEventListener('click', function () {
+  if (!chosenIds.length) return;
+  if (!confirm('לנקות את הבחירה האישית שלך? הפעולה לא משפיעה על משתמשים אחרים.')) return;
+  chosenIds = [];
+  saveChosenIds(chosenIds);
+  renderLists();
+});
+
+renderLists();
+initSortables();
+</script>
+
+</body>
+</html>
